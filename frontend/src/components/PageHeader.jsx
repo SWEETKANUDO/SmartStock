@@ -1,0 +1,1 @@
+export default function PageHeader({ eyebrow, title, description, action }) { return <div className="page-heading"><div><div className="eyebrow">{eyebrow || 'INVENTORY MANAGEMENT'}</div><h2>{title}</h2>{description && <p>{description}</p>}</div>{action}</div> }
