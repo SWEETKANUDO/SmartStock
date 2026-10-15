@@ -383,6 +383,37 @@ describe("SmartStock Category API", () => {
     expect(unchangedCategory.name).toBe("Test Category");
   });
 
+  it("rejects staff from deleting categories", async () => {
+    category = await Category.create({
+      name: "Test Category",
+      businessId: business._id,
+    });
+
+    const staffUser = await User.create({
+      name: "Test Staff",
+      email: "staff-category-delete@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: staffUser._id,
+      businessId: business._id,
+      role: "staff",
+      status: "active",
+    });
+
+    const staffToken = createToken(staffUser._id, business._id);
+
+    const response = await request(app)
+      .delete(`/api/categories/${category._id}`)
+      .set("Authorization", `Bearer ${staffToken}`);
+
+    expect(response.status).toBe(403);
+
+    const existingCategory = await Category.findById(category._id);
+    expect(existingCategory).not.toBeNull();
+  });
+
   it("allows staff to list categories", async () => {
     await Category.create({
       ...categoryData(),
