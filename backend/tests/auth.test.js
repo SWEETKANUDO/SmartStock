@@ -1,4 +1,3 @@
-
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 
 const mongoose = require("mongoose");
@@ -24,11 +23,7 @@ describe("SmartStock Authentication API", () => {
 
     await mongoose.connect(mongoServer.getUri());
 
-    await Promise.all([
-      User.init(),
-      Business.init(),
-      Membership.init(),
-    ]);
+    await Promise.all([User.init(), Business.init(), Membership.init()]);
   });
 
   afterAll(async () => {
@@ -73,9 +68,7 @@ describe("SmartStock Authentication API", () => {
   });
 
   it("stores a hashed password instead of plain text", async () => {
-    await request(app)
-      .post("/api/auth/signup")
-      .send(signupData);
+    await request(app).post("/api/auth/signup").send(signupData);
 
     const user = await User.findOne({
       email: "owner@example.com",
@@ -92,9 +85,7 @@ describe("SmartStock Authentication API", () => {
   });
 
   it("rejects duplicate email registration", async () => {
-    await request(app)
-      .post("/api/auth/signup")
-      .send(signupData);
+    await request(app).post("/api/auth/signup").send(signupData);
 
     const response = await request(app)
       .post("/api/auth/signup")
@@ -120,16 +111,12 @@ describe("SmartStock Authentication API", () => {
   });
 
   it("logs in with the correct password", async () => {
-    await request(app)
-      .post("/api/auth/signup")
-      .send(signupData);
+    await request(app).post("/api/auth/signup").send(signupData);
 
-    const response = await request(app)
-      .post("/api/auth/login")
-      .send({
-        email: signupData.email,
-        password: signupData.password,
-      });
+    const response = await request(app).post("/api/auth/login").send({
+      email: signupData.email,
+      password: signupData.password,
+    });
 
     expect(response.status).toBe(200);
     expect(response.body.message).toBe("Login successful");
@@ -139,39 +126,52 @@ describe("SmartStock Authentication API", () => {
   });
 
   it("rejects an incorrect password", async () => {
-    await request(app)
-      .post("/api/auth/signup")
-      .send(signupData);
+    await request(app).post("/api/auth/signup").send(signupData);
 
-    const response = await request(app)
-      .post("/api/auth/login")
-      .send({
-        email: signupData.email,
-        password: "wrong123",
-      });
+    const response = await request(app).post("/api/auth/login").send({
+      email: signupData.email,
+      password: "wrong123",
+    });
 
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("Invalid email or password");
   });
 
   it("rejects login for a disabled user", async () => {
-    await request(app)
-      .post("/api/auth/signup")
-      .send(signupData);
+    await request(app).post("/api/auth/signup").send(signupData);
 
     await User.updateOne(
       { email: signupData.email },
       { $set: { status: "disabled" } },
     );
 
-    const response = await request(app)
-      .post("/api/auth/login")
-      .send({
-        email: signupData.email,
-        password: signupData.password,
-      });
+    const response = await request(app).post("/api/auth/login").send({
+      email: signupData.email,
+      password: signupData.password,
+    });
 
     expect(response.status).toBe(401);
     expect(response.body.message).toBe("Invalid email or password");
+  });
+
+  it("rejects login when the owner's membership is disabled", async () => {
+    await request(app).post("/api/auth/signup").send(signupData);
+
+    const user = await User.findOne({
+      email: signupData.email,
+    });
+
+    await Membership.updateOne(
+      { userId: user._id },
+      { $set: { status: "disabled" } },
+    );
+
+    const response = await request(app).post("/api/auth/login").send({
+      email: signupData.email,
+      password: signupData.password,
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.body.message).toBe("No active business membership found");
   });
 });
