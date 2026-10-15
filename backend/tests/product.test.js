@@ -313,6 +313,69 @@ describe("SmartStock Product API", () => {
     expect(await Product.findOne({ sku: "STAFF-001" })).toBeNull();
   });
 
+  it("rejects staff from updating products", async () => {
+    product = await Product.create({
+      ...productData(),
+      businessId: business._id,
+    });
+
+    const staffUser = await User.create({
+      name: "Test Staff",
+      email: "staff-update@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: staffUser._id,
+      businessId: business._id,
+      role: "staff",
+      status: "active",
+    });
+
+    const staffToken = createToken(staffUser._id, business._id);
+
+    const response = await request(app)
+      .put(`/api/products/${product._id}`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({ sellingPrice: 999 });
+
+    expect(response.status).toBe(403);
+
+    const unchangedProduct = await Product.findById(product._id);
+    expect(unchangedProduct.sellingPrice).toBe(35);
+  });
+
+  it("rejects staff from deleting products", async () => {
+    product = await Product.create({
+      ...productData(),
+      businessId: business._id,
+    });
+
+    const staffUser = await User.create({
+      name: "Test Staff",
+      email: "staff-delete@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: staffUser._id,
+      businessId: business._id,
+      role: "staff",
+      status: "active",
+    });
+
+    const staffToken = createToken(staffUser._id, business._id);
+
+    const response = await request(app)
+      .delete(`/api/products/${product._id}`)
+      .set("Authorization", `Bearer ${staffToken}`);
+
+    expect(response.status).toBe(403);
+
+    const existingProduct = await Product.findById(product._id);
+    expect(existingProduct).not.toBeNull();
+  });
+
   it("allows staff to list products", async () => {
     await Product.create({
       ...productData(),
