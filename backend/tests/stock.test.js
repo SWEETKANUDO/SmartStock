@@ -362,4 +362,71 @@ describe("SmartStock Stock API", () => {
 
     expect(response.status).toBe(404);
   });
+
+  it("allows manager to update stock", async () => {
+    const managerUser = await User.create({
+      name: "Test Manager",
+      email: "manager-stock-update@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: managerUser._id,
+      businessId: business._id,
+      role: "manager",
+      status: "active",
+    });
+
+    const managerToken = createToken(managerUser._id, business._id);
+
+    const response = await request(app)
+      .patch(`/api/stock/${product._id}`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({
+        type: "in",
+        quantity: 3,
+        note: "Manager stock update test",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.product.previousQuantity).toBe(10);
+    expect(response.body.product.newQuantity).toBe(13);
+
+    const updatedProduct = await Product.findById(product._id);
+    expect(updatedProduct.stockQuantity).toBe(13);
+  });
+
+  it("allows manager to access stock history", async () => {
+    const managerUser = await User.create({
+      name: "Test Manager",
+      email: "manager-stock-history@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: managerUser._id,
+      businessId: business._id,
+      role: "manager",
+      status: "active",
+    });
+
+    const managerToken = createToken(managerUser._id, business._id);
+
+    await request(app)
+      .patch(`/api/stock/${product._id}`)
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        type: "in",
+        quantity: 2,
+        note: "Create history for manager test",
+      });
+
+    const response = await request(app)
+      .get(`/api/stock-history/${product._id}`)
+      .set("Authorization", `Bearer ${managerToken}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.count).toBe(1);
+    expect(response.body.history[0].quantity).toBe(2);
+  });
 });
