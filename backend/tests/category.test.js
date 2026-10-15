@@ -118,6 +118,102 @@ describe("SmartStock Category API", () => {
     expect(response.body.category.businessId).toBe(business._id.toString());
   });
 
+  it("allows manager to create categories", async () => {
+    const managerUser = await User.create({
+      name: "Test Manager",
+      email: "manager-category-create@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: managerUser._id,
+      businessId: business._id,
+      role: "manager",
+      status: "active",
+    });
+
+    const managerToken = createToken(managerUser._id, business._id);
+
+    const response = await request(app)
+      .post("/api/categories")
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send(categoryData({ name: "Manager Category" }));
+
+    expect(response.status).toBe(201);
+    expect(response.body.category.name).toBe("Manager Category");
+
+    const createdCategory = await Category.findOne({
+      name: "Manager Category",
+      businessId: business._id,
+    });
+
+    expect(createdCategory).not.toBeNull();
+  });
+
+  it("allows manager to update categories", async () => {
+    category = await Category.create({
+      ...categoryData(),
+      businessId: business._id,
+    });
+
+    const managerUser = await User.create({
+      name: "Test Manager",
+      email: "manager-category-update@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: managerUser._id,
+      businessId: business._id,
+      role: "manager",
+      status: "active",
+    });
+
+    const managerToken = createToken(managerUser._id, business._id);
+
+    const response = await request(app)
+      .put(`/api/categories/${category._id}`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({ name: "Manager Updated Category" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.category.name).toBe("Manager Updated Category");
+
+    const updatedCategory = await Category.findById(category._id);
+    expect(updatedCategory.name).toBe("Manager Updated Category");
+  });
+
+  it("allows manager to delete categories", async () => {
+    category = await Category.create({
+      ...categoryData(),
+      businessId: business._id,
+    });
+
+    const managerUser = await User.create({
+      name: "Test Manager",
+      email: "manager-category-delete@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: managerUser._id,
+      businessId: business._id,
+      role: "manager",
+      status: "active",
+    });
+
+    const managerToken = createToken(managerUser._id, business._id);
+
+    const response = await request(app)
+      .delete(`/api/categories/${category._id}`)
+      .set("Authorization", `Bearer ${managerToken}`);
+
+    expect(response.status).toBe(200);
+
+    const deletedCategory = await Category.findById(category._id);
+    expect(deletedCategory).toBeNull();
+  });
+
   it("rejects invalid category details", async () => {
     const response = await request(app)
       .post("/api/categories")
