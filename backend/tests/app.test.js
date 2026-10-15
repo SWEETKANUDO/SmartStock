@@ -36,7 +36,7 @@ describe("SmartStock API", () => {
     const expiredToken = jwt.sign(
       { sub: "507f1f77bcf86cd799439011" },
       process.env.JWT_ACCESS_SECRET,
-      { expiresIn: "-1s" }
+      { expiresIn: "-1s" },
     );
 
     const response = await request(app)
@@ -51,8 +51,75 @@ describe("SmartStock API", () => {
     const response = await request(app).get("/api/auth/me");
 
     expect(response.status).toBe(401);
-    expect(response.body.message).toBe(
-      "Access denied. Please login first."
+    expect(response.body.message).toBe("Access denied. Please login first.");
+  });
+
+  it("rejects a token without a businessId claim", async () => {
+    const token = jwt.sign(
+      { sub: "507f1f77bcf86cd799439011" },
+      process.env.JWT_ACCESS_SECRET,
+      { algorithm: "HS256", expiresIn: "15m" },
     );
+
+    const response = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(401);
+    expect(response.body.message).toBe("Invalid authentication token");
+  });
+
+  it("rejects a token with an invalid user ID claim", async () => {
+    const token = jwt.sign(
+      {
+        sub: "not-a-valid-id",
+        businessId: "507f1f77bcf86cd799439012",
+      },
+      process.env.JWT_ACCESS_SECRET,
+      { algorithm: "HS256", expiresIn: "15m" },
+    );
+
+    const response = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(401);
+    expect(response.body.message).toBe("Invalid authentication token");
+  });
+
+  it("rejects a token with an invalid business ID claim", async () => {
+    const token = jwt.sign(
+      {
+        sub: "507f1f77bcf86cd799439011",
+        businessId: "invalid-business-id",
+      },
+      process.env.JWT_ACCESS_SECRET,
+      { algorithm: "HS256", expiresIn: "15m" },
+    );
+
+    const response = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(401);
+    expect(response.body.message).toBe("Invalid authentication token");
+  });
+
+  it("rejects a token signed with an unsupported algorithm", async () => {
+    const token = jwt.sign(
+      {
+        sub: "507f1f77bcf86cd799439011",
+        businessId: "507f1f77bcf86cd799439012",
+      },
+      process.env.JWT_ACCESS_SECRET,
+      { algorithm: "HS384", expiresIn: "15m" },
+    );
+
+    const response = await request(app)
+      .get("/api/auth/me")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(401);
+    expect(response.body.message).toBe("Invalid or expired token");
   });
 });
