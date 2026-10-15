@@ -332,4 +332,34 @@ describe("SmartStock Stock API", () => {
       "You do not have access to this business",
     );
   });
+
+  it("does not allow another business to access this product's stock history", async () => {
+    const otherUser = await User.create({
+      name: "Other History Owner",
+      email: "other-history@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    const otherBusiness = await Business.create({
+      name: "Other History Shop",
+      slug: "other-history-shop",
+      industry: "grocery",
+      ownerId: otherUser._id,
+    });
+
+    await Membership.create({
+      userId: otherUser._id,
+      businessId: otherBusiness._id,
+      role: "owner",
+      status: "active",
+    });
+
+    const otherToken = createToken(otherUser._id, otherBusiness._id);
+
+    const response = await request(app)
+      .get(`/api/stock-history/${product._id}`)
+      .set("Authorization", `Bearer ${otherToken}`);
+
+    expect(response.status).toBe(404);
+  });
 });
