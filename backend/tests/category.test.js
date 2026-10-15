@@ -351,6 +351,38 @@ describe("SmartStock Category API", () => {
     ).toBeNull();
   });
 
+  it("rejects staff from updating categories", async () => {
+    category = await Category.create({
+      name: "Test Category",
+      businessId: business._id,
+    });
+
+    const staffUser = await User.create({
+      name: "Test Staff",
+      email: "staff-category-update@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: staffUser._id,
+      businessId: business._id,
+      role: "staff",
+      status: "active",
+    });
+
+    const staffToken = createToken(staffUser._id, business._id);
+
+    const response = await request(app)
+      .put(`/api/categories/${category._id}`)
+      .set("Authorization", `Bearer ${staffToken}`)
+      .send({ name: "Updated Category" });
+
+    expect(response.status).toBe(403);
+
+    const unchangedCategory = await Category.findById(category._id);
+    expect(unchangedCategory.name).toBe("Test Category");
+  });
+
   it("allows staff to list categories", async () => {
     await Category.create({
       ...categoryData(),
