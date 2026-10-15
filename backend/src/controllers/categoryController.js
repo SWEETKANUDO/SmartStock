@@ -91,10 +91,7 @@ async function updateCategory(req, res, next) {
       {
         $set: parsed.data,
       },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { returnDocument: "after", runValidators: true },
     );
 
     if (!category) {

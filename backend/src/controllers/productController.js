@@ -1,4 +1,3 @@
-
 const { z } = require("zod");
 const mongoose = require("mongoose");
 const Product = require("../models/Product");
@@ -117,9 +116,9 @@ async function updateProduct(req, res, next) {
         errors: parsed.success
           ? []
           : parsed.error.issues.map((issue) => ({
-              field: issue.path.join("."),
-              message: issue.message,
-            })),
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
       });
     }
 
@@ -151,10 +150,7 @@ async function updateProduct(req, res, next) {
       {
         $set: updateData,
       },
-      {
-        new: true,
-        runValidators: true,
-      },
+      { returnDocument: "after", runValidators: true },
     ).populate("categoryId", "name");
 
     if (!product) {
