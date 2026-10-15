@@ -132,6 +132,99 @@ describe("SmartStock Product API", () => {
     product = response.body.product;
   });
 
+  it("allows manager to create products", async () => {
+    const managerUser = await User.create({
+      name: "Test Manager",
+      email: "manager-create@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: managerUser._id,
+      businessId: business._id,
+      role: "manager",
+      status: "active",
+    });
+
+    const managerToken = createToken(managerUser._id, business._id);
+
+    const response = await request(app)
+      .post("/api/products")
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send(productData({ sku: "MANAGER-001" }));
+
+    expect(response.status).toBe(201);
+    expect(response.body.product.sku).toBe("MANAGER-001");
+
+    const createdProduct = await Product.findOne({
+      sku: "MANAGER-001",
+      businessId: business._id,
+    });
+
+    expect(createdProduct).not.toBeNull();
+  });
+
+  it("allows manager to update products", async () => {
+    product = await Product.create({
+      ...productData(),
+      businessId: business._id,
+    });
+
+    const managerUser = await User.create({
+      name: "Test Manager",
+      email: "manager-update@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: managerUser._id,
+      businessId: business._id,
+      role: "manager",
+      status: "active",
+    });
+
+    const managerToken = createToken(managerUser._id, business._id);
+
+    const response = await request(app)
+      .put(`/api/products/${product._id}`)
+      .set("Authorization", `Bearer ${managerToken}`)
+      .send({ sellingPrice: 45 });
+
+    expect(response.status).toBe(200);
+    expect(response.body.product.sellingPrice).toBe(45);
+  });
+
+  it("allows manager to delete products", async () => {
+    product = await Product.create({
+      ...productData(),
+      businessId: business._id,
+    });
+
+    const managerUser = await User.create({
+      name: "Test Manager",
+      email: "manager-delete@example.com",
+      passwordHash: "test-hash-only",
+    });
+
+    await Membership.create({
+      userId: managerUser._id,
+      businessId: business._id,
+      role: "manager",
+      status: "active",
+    });
+
+    const managerToken = createToken(managerUser._id, business._id);
+
+    const response = await request(app)
+      .delete(`/api/products/${product._id}`)
+      .set("Authorization", `Bearer ${managerToken}`);
+
+    expect(response.status).toBe(200);
+
+    const deletedProduct = await Product.findById(product._id);
+    expect(deletedProduct).toBeNull();
+  });
+
   it("rejects invalid product details", async () => {
     const response = await request(app)
       .post("/api/products")
