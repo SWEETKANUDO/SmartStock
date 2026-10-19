@@ -1,25 +1,259 @@
-import { useState } from 'react'
-import { Boxes, ArrowRight, Eye, EyeOff, ShieldCheck, BarChart3, PackageCheck } from 'lucide-react'
-import { api } from '../api'
-import { useToast } from '../components/Toast'
+import { useState } from "react";
+import {
+  Boxes,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+  BarChart3,
+  PackageCheck,
+} from "lucide-react";
+import { api } from "../api";
+import { useToast } from "../components/Toast";
 
 export default function AuthPage({ onLogin }) {
-  const [mode, setMode] = useState('login')
-  const [showPassword, setShowPassword] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [form, setForm] = useState({ name: '', businessName: '', email: '', password: '' })
-  const toast = useToast()
-  const isSignup = mode === 'signup'
-  function update(event) { setForm({ ...form, [event.target.name]: event.target.value }) }
-  async function submit(event) {
-    event.preventDefault(); setBusy(true)
-    try {
-      const result = await api(isSignup ? '/api/auth/signup' : '/api/auth/login', { method: 'POST', body: JSON.stringify(isSignup ? form : { email: form.email, password: form.password }) })
-      const token = result.token || result.accessToken || result.data?.token
-      if (!token) throw new Error('Login response did not include a token. Check your backend auth response.')
-      onLogin(token, result.user || result.data?.user)
-    } catch (error) { toast(error.message, 'error') }
-    finally { setBusy(false) }
+  const [mode, setMode] = useState("login");
+  const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    businessName: "",
+    email: "",
+    password: "",
+  });
+  const toast = useToast();
+  const isSignup = mode === "signup";
+  function update(event) {
+    const { name, value } = event.target;
+    setForm((currentForm) => ({ ...currentForm, [name]: value }));
   }
-  return <div className="auth-page"><section className="auth-visual"><div className="auth-brand"><div className="brand-mark"><Boxes size={23}/></div><span>smart<span className="brand-accent">stock</span></span></div><div className="visual-content"><div className="visual-pill"><span/> INVENTORY, SIMPLIFIED</div><h1>Know your stock.<br/><span>Grow your business.</span></h1><p>One clear view of your products, stock levels and business performance.</p><div className="visual-dashboard"><div className="visual-dashboard-top"><div><small>Inventory overview</small><strong>Stock at a glance</strong></div><div className="visual-status">● LIVE VIEW</div></div><div className="visual-metrics"><div><span className="mini-icon blue"><PackageCheck size={17}/></span><small>Products</small><b>Organized</b></div><div><span className="mini-icon green"><BarChart3 size={17}/></span><small>Stock levels</small><b>Up to date</b></div><div><span className="mini-icon violet"><ShieldCheck size={17}/></span><small>Workspace</small><b>Protected</b></div></div><div className="visual-chart"><div className="chart-label"><span>Stock activity</span><span>Last 7 days</span></div><div className="bar-chart">{[32,54,43,70,49,83,63,92,58,74,48,86,64,96,69,78,54,89,60,72,43,81,62,95].map((h, i) => <i key={i} style={{ height: `${h}%` }}/>)}</div><div className="chart-days"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span></div></div></div></div><div className="visual-footer"><span>Built for everyday business</span><span>Simple by design · Made for growth</span></div></section><section className="auth-panel"><div className="auth-card"><div className="mobile-auth-brand"><div className="brand-mark"><Boxes size={21}/></div><span>smart<span className="brand-accent">stock</span></span></div><div className="auth-kicker">WELCOME {isSignup ? 'ABOARD' : 'BACK'}</div><h2>{isSignup ? 'Create your account' : 'Welcome back'}</h2><p className="auth-subtitle">{isSignup ? 'Set up your workspace to get started.' : 'Enter your details to access your workspace.'}</p><div className="auth-tabs"><button className={!isSignup ? 'selected' : ''} onClick={() => setMode('login')}>Sign in</button><button className={isSignup ? 'selected' : ''} onClick={() => setMode('signup')}>Create account</button></div><form onSubmit={submit} className="auth-form">{isSignup && <><label>Full name<input name="name" value={form.name} onChange={update} placeholder="Your full name" required autoComplete="name"/></label><label>Business name<input name="businessName" value={form.businessName} onChange={update} placeholder="Your business name" required/></label></>}<label>Email address<input name="email" type="email" value={form.email} onChange={update} placeholder="you@company.com" required autoComplete="email"/></label><label>Password<div className="password-field"><input name="password" type={showPassword ? 'text' : 'password'} value={form.password} onChange={update} placeholder="Enter your password" required autoComplete={isSignup ? 'new-password' : 'current-password'}/><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Hide password' : 'Show password'}>{showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}</button></div></label><button className="primary-button auth-submit" disabled={busy}>{busy ? 'Please wait…' : isSignup ? 'Create workspace' : 'Sign in to SmartStock'}<ArrowRight size={17}/></button></form><div className="secure-note"><ShieldCheck size={16}/> Your workspace is protected with secure authentication.</div><p className="auth-switch">{isSignup ? 'Already have an account?' : 'New to SmartStock?'} <button onClick={() => setMode(isSignup ? 'login' : 'signup')}>{isSignup ? 'Sign in' : 'Create an account'}</button></p></div><div className="auth-copyright">© {new Date().getFullYear()} SmartStock <span>•</span> Inventory made clearer</div></section></div>
+  async function submit(event) {
+    event.preventDefault();
+    setBusy(true);
+    try {
+      const result = await api(
+        isSignup ? "/api/auth/signup" : "/api/auth/login",
+        {
+          method: "POST",
+          body: JSON.stringify(
+            isSignup ? form : { email: form.email, password: form.password },
+          ),
+        },
+      );
+      const token = result.token || result.accessToken || result.data?.token;
+      if (!token)
+        throw new Error(
+          "Login response did not include a token. Check your backend auth response.",
+        );
+      onLogin(token, result.user || result.data?.user);
+    } catch (error) {
+      toast(error.message, "error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="auth-page">
+      <section className="auth-visual">
+        <div className="auth-brand">
+          <div className="brand-mark">
+            <Boxes size={23} />
+          </div>
+          <span>
+            smart<span className="brand-accent">stock</span>
+          </span>
+        </div>
+        <div className="visual-content">
+          <div className="visual-pill">
+            <span /> INVENTORY, SIMPLIFIED
+          </div>
+          <h1>
+            Know your stock.
+            <br />
+            <span>Grow your business.</span>
+          </h1>
+          <p>
+            One clear view of your products, stock levels and business
+            performance.
+          </p>
+          <div className="visual-dashboard">
+            <div className="visual-dashboard-top">
+              <div>
+                <small>Inventory overview</small>
+                <strong>Stock at a glance</strong>
+              </div>
+              <div className="visual-status">● LIVE VIEW</div>
+            </div>
+            <div className="visual-metrics">
+              <div>
+                <span className="mini-icon blue">
+                  <PackageCheck size={17} />
+                </span>
+                <small>Products</small>
+                <b>Organized</b>
+              </div>
+              <div>
+                <span className="mini-icon green">
+                  <BarChart3 size={17} />
+                </span>
+                <small>Stock levels</small>
+                <b>Up to date</b>
+              </div>
+              <div>
+                <span className="mini-icon violet">
+                  <ShieldCheck size={17} />
+                </span>
+                <small>Workspace</small>
+                <b>Protected</b>
+              </div>
+            </div>
+            <div className="visual-chart">
+              <div className="chart-label">
+                <span>Stock activity</span>
+                <span>Last 7 days</span>
+              </div>
+              <div className="bar-chart">
+                {[
+                  32, 54, 43, 70, 49, 83, 63, 92, 58, 74, 48, 86, 64, 96, 69,
+                  78, 54, 89, 60, 72, 43, 81, 62, 95,
+                ].map((h, i) => (
+                  <i key={i} style={{ height: `${h}%` }} />
+                ))}
+              </div>
+              <div className="chart-days">
+                <span>MON</span>
+                <span>TUE</span>
+                <span>WED</span>
+                <span>THU</span>
+                <span>FRI</span>
+                <span>SAT</span>
+                <span>SUN</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="visual-footer">
+          <span>Built for everyday business</span>
+          <span>Simple by design · Made for growth</span>
+        </div>
+      </section>
+      <section className="auth-panel">
+        <div className="auth-card">
+          <div className="mobile-auth-brand">
+            <div className="brand-mark">
+              <Boxes size={21} />
+            </div>
+            <span>
+              smart<span className="brand-accent">stock</span>
+            </span>
+          </div>
+          <div className="auth-kicker">
+            WELCOME {isSignup ? "ABOARD" : "BACK"}
+          </div>
+          <h2>{isSignup ? "Create your account" : "Welcome back"}</h2>
+          <p className="auth-subtitle">
+            {isSignup
+              ? "Set up your workspace to get started."
+              : "Enter your details to access your workspace."}
+          </p>
+          <div className="auth-tabs">
+            <button
+              className={!isSignup ? "selected" : ""}
+              onClick={() => setMode("login")}
+            >
+              Sign in
+            </button>
+            <button
+              className={isSignup ? "selected" : ""}
+              onClick={() => setMode("signup")}
+            >
+              Create account
+            </button>
+          </div>
+          <form onSubmit={submit} className="auth-form">
+            {isSignup && (
+              <>
+                <label>
+                  Full name
+                  <input
+                    name="name"
+                    value={form.name}
+                    onChange={update}
+                    placeholder="Your full name"
+                    required
+                    autoComplete="name"
+                  />
+                </label>
+                <label>
+                  Business name
+                  <input
+                    name="businessName"
+                    value={form.businessName}
+                    onChange={update}
+                    placeholder="Your business name"
+                    required
+                  />
+                </label>
+              </>
+            )}
+            <label>
+              Email address
+              <input
+                name="email"
+                type="email"
+                value={form.email}
+                onChange={update}
+                placeholder="you@company.com"
+                required
+                autoComplete="email"
+              />
+            </label>
+            <label>
+              Password
+              <div className="password-field">
+                <input
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={update}
+                  placeholder="Enter your password"
+                  required
+                  autoComplete={isSignup ? "new-password" : "current-password"}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </div>
+            </label>
+            <button className="primary-button auth-submit" disabled={busy}>
+              {busy
+                ? "Please wait…"
+                : isSignup
+                  ? "Create workspace"
+                  : "Sign in to SmartStock"}
+              <ArrowRight size={17} />
+            </button>
+          </form>
+          <div className="secure-note">
+            <ShieldCheck size={16} /> Your workspace is protected with secure
+            authentication.
+          </div>
+          <p className="auth-switch">
+            {isSignup ? "Already have an account?" : "New to SmartStock?"}{" "}
+            <button onClick={() => setMode(isSignup ? "login" : "signup")}>
+              {isSignup ? "Sign in" : "Create an account"}
+            </button>
+          </p>
+        </div>
+        <div className="auth-copyright">
+          © {new Date().getFullYear()} SmartStock <span>•</span> Inventory made
+          clearer
+        </div>
+      </section>
+    </div>
+  );
 }

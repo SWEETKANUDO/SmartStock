@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  vi,
+} from "vitest";
 
 const mongoose = require("mongoose");
 const request = require("supertest");
@@ -65,6 +73,25 @@ describe("SmartStock Authentication API", () => {
     expect(await User.countDocuments()).toBe(1);
     expect(await Business.countDocuments()).toBe(1);
     expect(await Membership.countDocuments()).toBe(1);
+  });
+
+  it("rolls back account creation when membership creation fails", async () => {
+    const createMembership = vi
+      .spyOn(Membership, "create")
+      .mockRejectedValueOnce(new Error("Membership write failed"));
+
+    try {
+      const response = await request(app)
+        .post("/api/auth/signup")
+        .send(signupData);
+
+      expect(response.status).toBe(500);
+      expect(await User.countDocuments()).toBe(0);
+      expect(await Business.countDocuments()).toBe(0);
+      expect(await Membership.countDocuments()).toBe(0);
+    } finally {
+      createMembership.mockRestore();
+    }
   });
 
   it("stores a hashed password instead of plain text", async () => {

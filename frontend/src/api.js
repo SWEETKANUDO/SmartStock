@@ -1,6 +1,14 @@
 const API_URL = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000"
+  import.meta.env.VITE_API_URL || "http://localhost:5000"
 ).replace(/\/$/, "");
+
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
 
 export async function api(path, options = {}) {
   const token = localStorage.getItem("smartstock_token");
@@ -14,10 +22,12 @@ export async function api(path, options = {}) {
   const data = contentType.includes("application/json")
     ? await response.json()
     : await response.text();
-  if (!response.ok)
-    throw new Error(
+  if (!response.ok) {
+    throw new ApiError(
       data?.message || data?.error || `Request failed (${response.status})`,
+      response.status,
     );
+  }
   return data;
 }
 

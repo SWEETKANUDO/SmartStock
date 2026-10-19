@@ -36,8 +36,9 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [params] = useSearchParams();
+  const [loadError, setLoadError] = useState(null);
+  const [params, setParams] = useSearchParams();
+  const [search, setSearch] = useState(() => params.get("search") || "");
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(blank);
@@ -46,6 +47,7 @@ export default function Products() {
   const toast = useToast();
   async function load() {
     setLoading(true);
+    setLoadError(null);
     try {
       const [p, c] = await Promise.all([
         api("/api/products"),
@@ -54,6 +56,7 @@ export default function Products() {
       setProducts(toArray(p));
       setCategories(toArray(c));
     } catch (e) {
+      setLoadError(e.message);
       toast(e.message, "error");
     } finally {
       setLoading(false);
@@ -63,10 +66,26 @@ export default function Products() {
     load();
   }, []);
   useEffect(() => {
-    const handler = (event) => setSearch(event.detail);
+    const handler = (event) => updateSearch(event.detail);
     window.addEventListener("smartstock-search", handler);
     return () => window.removeEventListener("smartstock-search", handler);
   }, []);
+  const categoryId = params.get("category");
+  const selectedCategory = categories.find(
+    (category) => category._id === categoryId,
+  );
+  function updateSearch(value) {
+    setSearch(value);
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        if (value.trim()) next.set("search", value);
+        else next.delete("search");
+        return next;
+      },
+      { replace: true },
+    );
+  }
   const filtered = useMemo(
     () =>
       products.filter((p) => {
@@ -76,9 +95,14 @@ export default function Products() {
           .includes(q);
         const low =
           Number(p.stockQuantity || 0) <= Number(p.lowStockThreshold || 0);
-        return matches && (params.get("filter") !== "low" || low);
+        const productCategoryId = p.categoryId?._id || p.categoryId;
+        return (
+          matches &&
+          (!categoryId || productCategoryId === categoryId) &&
+          (params.get("filter") !== "low" || low)
+        );
       }),
-    [products, search, params],
+    [products, search, params, categoryId],
   );
   function openCreate() {
     setEditing(null);
@@ -101,17 +125,22 @@ export default function Products() {
   async function save(e) {
     e.preventDefault();
     setSaving(true);
+
     const body = {
-      ...form,
+      name: form.name,
+      sku: form.sku,
+      categoryId: form.categoryId,
       purchasePrice: Number(form.purchasePrice),
       sellingPrice: Number(form.sellingPrice),
       stockQuantity: Number(form.stockQuantity),
       lowStockThreshold: Number(form.lowStockThreshold),
+      unit: form.unit,
     };
+
 
     try {
       await api(editing ? `/api/products/${editing._id}` : "/api/products", {
-        method: editing ? "PATCH" : "POST",
+        method: editing ? "PUT" : "POST",
         body: JSON.stringify(body),
       });
       toast(
@@ -152,12 +181,12 @@ export default function Products() {
           <Search size={17} />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => updateSearch(e.target.value)}
             placeholder="Search name or SKU…"
           />
           <kbd>/</kbd>
           {search && (
-            <button onClick={() => setSearch("")} aria-label="Clear search">
+            <button onClick={() => updateSearch("")} aria-label="Clear search">
               <X size={15} />
             </button>
           )}
@@ -166,6 +195,34 @@ export default function Products() {
           {params.get("filter") === "low" && (
             <span className="filter-chip">
               <AlertTriangle size={14} /> Low stock <a href="/products">×</a>
+            </span>
+          )}
+          {categoryId && (
+            <span className="filter-chip">
+              <Package size={14} />
+              {selectedCategory?.name || "Selected category"}
+              <button
+                type="button"
+                aria-label="Clear category filter"
+                onClick={() =>
+                  setParams(
+                    (current) => {
+                      const next = new URLSearchParams(current);
+                      next.delete("category");
+                      return next;
+                    },
+                    { replace: true },
+                  )
+                }
+                style={{
+                  border: 0,
+                  background: "transparent",
+                  color: "inherit",
+                  padding: 0,
+                }}
+              >
+                ×
+              </button>
             </span>
           )}
           <span>{filtered.length} products</span>
@@ -260,7 +317,15 @@ export default function Products() {
               <RefreshCw size={18} className="spin" /> Loading products…
             </div>
           )}
-          {!loading && filtered.length === 0 && (
+          {!loading && loadError && (
+            <div className="table-loading" role="alert">
+              <span>Couldn’t load products: {loadError}</span>
+              <button className="secondary-button" onClick={load}>
+                Try again
+              </button>
+            </div>
+          )}
+          {!loading && !loadError && filtered.length === 0 && (
             <EmptyState
               title={search ? "No matching products" : "No products yet"}
               description={
@@ -273,11 +338,17 @@ export default function Products() {
         </div>
         <div className="table-footer">
           <span>
-            Showing <strong>{filtered.length}</strong> of{" "}
-            <strong>{products.length}</strong> products
+            {loadError ? (
+              "Product data may be out of date"
+            ) : (
+              <>
+                Showing <strong>{filtered.length}</strong> of{" "}
+                <strong>{products.length}</strong> products
+              </>
+            )}
           </span>
           <span>
-            Inventory data <i className="live-dot" /> up to date
+            {loadError ? "Refresh failed" : <>Inventory data <i className="live-dot" /> up to date</>}
           </span>
         </div>
       </section>
@@ -316,7 +387,7 @@ export default function Products() {
                   onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
                   required
                 >
-                  <option value="">Choose category (optional)</option>
+                  <option value="">Choose a category</option>
                   {categories.map((c) => (
                     <option key={c._id} value={c._id}>
                       {c.name}

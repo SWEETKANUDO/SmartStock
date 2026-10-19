@@ -13,7 +13,7 @@ npm install
 Create a `.env` file from `.env.example` and set the backend URL:
 
 ```env
-VITE_API_URL=http://localhost:3000
+VITE_API_URL=http://localhost:5000
 ```
 
 Then run:
@@ -43,16 +43,16 @@ The frontend is wired to these API endpoints:
 - `POST /api/auth/signup`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
-- `GET /api/dashboard/summary`
+- `GET /api/dashboard`
 - `GET /api/products`, `POST /api/products`
-- `PATCH /api/products/:id`, `DELETE /api/products/:id`
-- `GET /api/products/low-stock` (backend supports this; dashboard currently derives low stock from product records)
+- `PUT /api/products/:id`, `DELETE /api/products/:id`
+- `GET /api/products/low-stock`
 - `GET /api/categories`, `POST /api/categories`
-- `PATCH /api/categories/:id`, `DELETE /api/categories/:id`
+- `PUT /api/categories/:id`, `DELETE /api/categories/:id`
 - `PATCH /api/stock/:id` with `{ "type": "in" | "out", "quantity": 1, "note": "optional" }`
 - `GET /api/stock-history/:id`
 
-The frontend expects login/signup responses to contain a token (`token` or `accessToken`) and optionally a `user` object. If your backend uses different signup field names or stock movement values, adjust the relevant request in `src/pages/AuthPage.jsx` or `src/pages/Stock.jsx`.
+The backend requires a MongoDB replica set or sharded cluster for transactional stock movements. Configure `MONGODB_URI`, `JWT_ACCESS_SECRET`, and `FRONTEND_URL` in the backend environment. Configure `VITE_API_URL` as the deployed backend origin when building the frontend; production builds fail if it is missing.
 
 ## 4. Build check
 

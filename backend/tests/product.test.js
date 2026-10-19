@@ -295,6 +295,46 @@ describe("SmartStock Product API", () => {
     expect(response.body.products[0].sku).toBe("MILK-001");
   });
 
+  it("lists only active low-stock products for the current business", async () => {
+    await Product.create([
+      {
+        ...productData({
+          name: "Low stock milk",
+          sku: "LOW-001",
+          stockQuantity: 5,
+          lowStockThreshold: 5,
+        }),
+        businessId: business._id,
+      },
+      {
+        ...productData({
+          name: "In stock rice",
+          sku: "IN-STOCK-001",
+          stockQuantity: 10,
+          lowStockThreshold: 5,
+        }),
+        businessId: business._id,
+      },
+      {
+        ...productData({
+          name: "Inactive stock",
+          sku: "INACTIVE-001",
+          stockQuantity: 0,
+          status: "inactive",
+        }),
+        businessId: business._id,
+      },
+    ]);
+
+    const response = await request(app)
+      .get("/api/products/low-stock")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.status).toBe(200);
+    expect(response.body.count).toBe(1);
+    expect(response.body.products[0].sku).toBe("LOW-001");
+  });
+
   it("updates a product", async () => {
     product = await Product.create({
       ...productData(),

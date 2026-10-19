@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const mongoose = require("mongoose");
 const { z } = require("zod");
 
 const User = require("../models/User");
@@ -42,33 +43,45 @@ async function signup(req, res, next) {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const user = await User.create({
-      name,
-      email: normalizedEmail,
-      passwordHash,
-    });
+    let user;
+    let business;
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        [user] = await User.create(
+          [{ name, email: normalizedEmail, passwordHash }],
+          { session },
+        );
 
-    const slug =
-      businessName
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "") +
-      "-" +
-      user._id.toString().slice(-6);
+        const slug =
+          businessName
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "") +
+          "-" +
+          user._id.toString().slice(-6);
 
-    const business = await Business.create({
-      name: businessName,
-      slug,
-      ownerId: user._id,
-    });
+        [business] = await Business.create(
+          [{ name: businessName, slug, ownerId: user._id }],
+          { session },
+        );
 
-    await Membership.create({
-      userId: user._id,
-      businessId: business._id,
-      role: "owner",
-      status: "active",
-    });
+        await Membership.create(
+          [
+            {
+              userId: user._id,
+              businessId: business._id,
+              role: "owner",
+              status: "active",
+            },
+          ],
+          { session },
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
 
     const token = jwt.sign(
       {
@@ -94,6 +107,11 @@ async function signup(req, res, next) {
       },
     });
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        message: "Email is already registered",
+      });
+    }
     next(error);
   }
 }
@@ -184,12 +202,55 @@ async function login(req, res, next) {
   }
 }
 
-function getMe(req, res) {
-  return res.status(200).json({
-    message: "Authentication successful",
-    userId: req.userId,
-    businessId: req.businessId,
-  });
+async function getMe(req, res, next) {
+  try {
+    const user = await User.findById(req.userId).select("name email status");
+
+    if (!user || user.status !== "active") {
+      return res.status(401).json({
+        message: "User not found or inactive",
+      });
+    }
+
+    const business = await Business.findById(req.businessId).select(
+      "name slug status",
+    );
+
+    if (!business || business.status !== "active") {
+      return res.status(403).json({
+        message: "Business is not active",
+      });
+    }
+
+    const membership = await Membership.findOne({
+      userId: user._id,
+      businessId: business._id,
+      status: "active",
+    }).select("role");
+
+    if (!membership) {
+      return res.status(403).json({
+        message: "Active membership not found",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Authentication successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: membership.role,
+        business: {
+          id: business._id,
+          name: business.name,
+          slug: business.slug,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 }
 
 function getBusiness(req, res) {
