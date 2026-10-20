@@ -235,19 +235,19 @@ export default function Products() {
           </button>
         </div>
       </div>
-      <section className="panel table-panel">
+      <section className="panel table-panel product-table-panel">
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>PRODUCT</th>
-                <th>SKU</th>
-                <th>CATEGORY</th>
-                <th>UNIT COST</th>
-                <th>SELLING PRICE</th>
-                <th>STOCK</th>
-                <th>STATUS</th>
-                <th></th>
+                <th scope="col">PRODUCT</th>
+                <th scope="col">SKU</th>
+                <th scope="col">CATEGORY</th>
+                <th scope="col">UNIT COST</th>
+                <th scope="col">SELLING PRICE</th>
+                <th scope="col">STOCK</th>
+                <th scope="col">STATUS</th>
+                <th scope="col"></th>
               </tr>
             </thead>
             <tbody>
@@ -258,7 +258,7 @@ export default function Products() {
                     Number(p.lowStockThreshold || 0);
                   return (
                     <tr key={p._id}>
-                      <td>
+                      <td data-label="Product">
                         <div className="table-product">
                           <div className="product-avatar">
                             {(p.name || "P")[0].toUpperCase()}
@@ -266,22 +266,27 @@ export default function Products() {
                           <strong>{p.name}</strong>
                         </div>
                       </td>
-                      <td>
+                      <td data-label="SKU">
                         <span className="sku-text">{p.sku || "—"}</span>
                       </td>
-                      <td>
+                      <td data-label="Category">
                         {p.categoryId?.name ||
                           categories.find((c) => c._id === p.categoryId)
                             ?.name ||
                           "Uncategorized"}
                       </td>
-                      <td>{money(p.purchasePrice)}</td>
-                      <td className="price-strong">{money(p.sellingPrice)}</td>
-                      <td>
+                      <td data-label="Unit cost">{money(p.purchasePrice)}</td>
+                      <td
+                        data-label="Selling price"
+                        className="price-strong"
+                      >
+                        {money(p.sellingPrice)}
+                      </td>
+                      <td data-label="Stock">
                         <strong>{p.stockQuantity ?? 0}</strong>{" "}
                         <span className="unit-text">{p.unit || "pcs"}</span>
                       </td>
-                      <td>
+                      <td data-label="Status">
                         <span
                           className={`status-pill ${low ? "status-low" : "status-active"}`}
                         >
@@ -289,7 +294,7 @@ export default function Products() {
                           {low ? "Low stock" : "In stock"}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Actions">
                         <div className="row-actions">
                           <button
                             className="icon-button small"
